@@ -9,9 +9,7 @@ typedef union {
     uint16_t raw_value;
     struct {
         // HỌC VIÊN BẮT ĐẦU VIẾT CODE TỪ ĐÂY
-
-
-
+        uint16_t PWR_ON:1, ASSIST_LEVEL:2, LIGHT_BRIGHT:4, RESERVED:9;
 
         // HỌC VIÊN KẾT THÚC VIẾT CODE
     } fields;
@@ -32,7 +30,7 @@ void drive_sport(void) {
 
 // HỌC VIÊN BẮT ĐẦU VIẾT CODE TỪ ĐÂY
 
-
+void (*drive_modes[])(void) = {drive_eco, drive_normal, drive_sport}; 
 
 
 // HỌC VIÊN KẾT THÚC VIẾT CODE
@@ -44,8 +42,9 @@ void Battery_Monitor(void (*overheat_cb)(void)) {
     int battery_temp = 45; 
     
     // HỌC VIÊN BẮT ĐẦU VIẾT CODE TỪ ĐÂY
-
-
+    if (overheat_cb != NULL && battery_temp > 40) {
+        overheat_cb();
+    }
 
 
     // HỌC VIÊN KẾT THÚC VIẾT CODE
@@ -62,14 +61,13 @@ const char BIKE_MODEL[] = "E-Bike X2026";
 uint32_t total_odometer = 0;             
 
 void crash_simulation(void) {
-    // HỌC VIÊN BẮT ĐẦU VIẾT CODE TỪ ĐÂY
 
-
-
-
-    // HỌC VIÊN KẾT THÚC VIẾT CODE
+    static int frame_count = 0; 
+    volatile uint8_t crash[100000]; 
+    crash[0] = 1; 
+    printf("Tao Stack Frame thu: %d\n", ++frame_count);
+    crash_simulation();
 }
-
 
 // HÀM MAIN KIỂM TRA (Học viên giữ nguyên để chạy thử nghiệm)
 
@@ -85,8 +83,11 @@ int main() {
     // 2. Test Task 2
     printf("ENGINE CONTROLLING: \n");
     // HỌC VIÊN BẮT ĐẦU VIẾT CODE TỪ ĐÂY
-
-
+    if (my_bike.fields.ASSIST_LEVEL > 2) {
+        printf("ERROR\n");
+    } else {
+       drive_modes[my_bike.fields.ASSIST_LEVEL]() ;
+    }
 
 
     // HỌC VIÊN KẾT THÚC VIẾT CODE

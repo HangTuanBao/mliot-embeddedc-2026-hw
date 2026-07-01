@@ -1,0 +1,30 @@
+TASK 4: KHẢO SÁT BẢN ĐỒ BỘ NHỚ & PHÂN TÍCH CRASH
+- Câu 4.2: Sắp xếp các biến vào phân vùng bộ nhớ vật lý:
+Dựa vào tính chất của từng biến và log in ra từ Terminal, ta sắp xếp như sau:
+
+BIKE_MODEL: Thuộc phân vùng .rodata (Read-only data - Nằm trên bộ nhớ ROM/Flash).
+Giải thích: Do đây là mảng ký tự toàn cục có từ khóa const, giá trị của nó là hằng số không thể thay đổi nên trình biên dịch sẽ nạp cứng nó vào Flash.
+
+total_odometer: Thuộc phân vùng .bss (Block Started by Symbol - Nằm trên bộ nhớ RAM).
+Giải thích: Do đây là biến toàn cục được khởi tạo mặc định bằng 0.
+
+current_speed: Thuộc phân vùng Stack (Ngăn xếp - Nằm trên bộ nhớ RAM).
+Giải thích: Do đây là biến cục bộ (Local variable) được khai báo tạm thời bên trong hàm main().
+
+- Câu 4.3: Hiện tượng khi chạy hàm giả lập Crash (Stack Overflow):
+
++ Khi chạy trên Máy tính (PC):
+Do ta tạo ra một vòng lặp đệ quy vô hạn, mỗi vòng lặp ngốn thêm khoảng 100KB bộ nhớ ngăn xếp (vùng crash[100000]). Chỉ sau vài chục lần gọi, con trỏ Stack Pointer sẽ trượt ra khỏi vùng RAM an toàn mà Hệ điều hành cấp phép.
+Hệ điều hành (Windows/Linux) phát hiện truy cập bộ nhớ trái phép sẽ lập tức "kill" (tiêu diệt) tiến trình này để bảo vệ máy tính. Trên Terminal sẽ xuất hiện thông báo lỗi "Segmentation fault (core dumped)" hoặc chương trình tự động bị ép đóng.
+
++ Nếu chạy trên Vi điều khiển thực tế (ARM Cortex-M):
+Vi điều khiển thường không có Hệ điều hành cao cấp để bảo vệ bộ nhớ. Khi vùng Stack bị tràn, nó sẽ ghi đè lên các vùng nhớ dữ liệu khác (như .bss, .data) hoặc ghi vào vùng nhớ phần cứng không hợp lệ.
+Khi đó, phần cứng của CPU sẽ kích hoạt một lỗi ngoại lệ nghiêm trọng và ép con trỏ chương trình (PC) nhảy thẳng vào hàm ngắt xử lý sự cố có tên là HardFault_Handler (hoặc MemManage_Handler). Tại đây hệ thống thường sẽ bị treo cứng chờ reset.
+
+TASK 5: TỐI ƯU HÓA DUNG LƯỢNG VỚI LINKER SCRIPT
+Câu trả lời: Lựa chọn Cách 1 (uint16_t trip_history[20000] = {0};) là cách duy nhất giúp chương trình biên dịch thành công và nạp được xuống chip.
+
+Giải thích:
+Mảng trip_history có 20.000 phần tử kiểu uint16_t (2 bytes), tức là mảng này sẽ ngốn tổng cộng khoảng 40 KB dung lượng.
+Đối với Cách 1 (Khởi tạo bằng 0): Trình biên dịch sẽ đưa mảng này vào phân vùng .bss. Đặc điểm cực hay của vùng .bss là nó không lưu giữ dữ liệu thực tế vào file cài đặt (.hex/.bin), mà chỉ ghi chú lại "kích thước cần dùng". Do đó, nó chiếm 0 byte trên bộ nhớ Flash. Khi vi điều khiển khởi động, mã Startup sẽ tự động vào RAM và cấp phát/xóa 40KB này về số 0. (Với Flash trống 20KB và RAM 128KB -> Chạy hoàn toàn tốt).
+Đối với Cách 2 (Khởi tạo khác 0): Trình biên dịch sẽ đưa mảng này vào phân vùng .data. Phân vùng .data bắt buộc phải sao chép toàn bộ giá trị khởi tạo (40 KB) nhúng cứng vào bên trong file cài đặt để lưu vào bộ nhớ Flash. Khi khởi động, chip mới copy 40 KB từ Flash sang RAM. Tuy nhiên, bộ nhớ Flash của chip lúc này chỉ còn trống đúng 20 KB. Cố nhồi 40 KB vào 20 KB sẽ dẫn đến lỗi tràn bộ nhớ chương trình (Flash Overflow), khiến việc biên dịch và nạp chip thất bại ngay lập tức.
