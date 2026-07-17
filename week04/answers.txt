@@ -1,0 +1,18 @@
+Task 5 LED Feedback: Cách 2 (Điều khiển LED phản hồi bằng Firmware)
+
+
+Task 1 (Kiến trúc Phần cứng): Bản chất các chế độ GPIO ---
+1.1. Hoạt động của cặp Transistor PMOS và NMOS ở chế độ Output (Push-Pull):
+- Khi xuất mức logic 1 (3.3V): Transistor PMOS (nối VDD) sẽ DẪN (ON), còn NMOS (nối GND) sẽ NGẮT (OFF). Dòng điện từ VDD được "đẩy" (Push) qua chân GPIO ra tải ngoài.
+- Khi xuất mức logic 0 (0V): Transistor PMOS sẽ NGẮT (OFF), còn NMOS sẽ DẪN (ON). Chân GPIO được nối thẳng xuống GND, giúp "kéo" (Pull) dòng điện từ tải ngoài xuống đất.
+1.2. Chế độ Input Pull-up và hiện tượng Floating:
+- Khi nào cần Input Pull-up: Cần dùng khi kết nối với các nút nhấn (thường có một đầu nối xuống GND) hoặc các cảm biến giao tiếp kiểu Open-Drain (như I2C). Điện trở Pull-up nội sẽ kéo và giữ chân GPIO ở mức logic 1 (3.3V) ổn định khi nút nhấn chưa được bấm, tránh trạng thái lơ lửng.
+- Hiện tượng hở mạch (Floating): Khi cấu hình Input hở (Floating) và không kết nối vào đâu, chân GPIO hoạt động như một chiếc ăng-ten thu các nhiễu điện từ trường xung quanh. Điều này khiến điện áp đầu vào chập chờn, thanh ghi IDR đọc giá trị logic nhảy loạn xạ liên tục giữa 0 và 1.
+Task 2 (Quy trình Cấu hình ngoại vi): Tầm quan trọng của Xung nhịp (Clock) ---
+- Tại sao tắt mặc định toàn bộ Clock khi reset: Đây là cơ chế tiết kiệm điện năng (Clock Gating) trên dòng ARM Cortex-M. Các vi điều khiển có rất nhiều ngoại vi; nếu bật xung nhịp đồng loạt cho tất cả các bộ phận kể cả khi không dùng đến, chip sẽ tiêu thụ dòng điện rất lớn và gây nóng. Tắt mặc định là cách tối ưu để tiết kiệm năng lượng.
+- Hậu quả khi quên bật Clock cho Port: Khi không bật clock, khối ngoại vi GPIO đó hoàn toàn không được cấp nguồn nuôi logic. Mọi thao tác ghi/đọc cấu hình lên các thanh ghi (CRL, CRH, ODR, IDR...) sẽ bị chip bỏ qua. Chân GPIO không phản hồi và không thể điều khiển được.
+
+PHẦN 2: THỰC HÀNH TRÊN MẠCH THẬT (TASK 5)
+
+Link video demo quét ma trận phím 2x2:
+- Google Drive link: https://drive.google.com/file/d/1UEIlzE1E1JsycZyKdWit9Cl24qGPobal/view?usp=sharing

@@ -1,0 +1,21 @@
+# Ignore build directories
+build/
+Build/
+*/build/
+
+# Ignore IDE settings
+.vscode/
+.qodo/
+.idea/
+
+# Ignore binary files
+*.elf
+*.bin
+*.hex
+*.map
+*.o
+*.obj
+
+# Ignore temporary files
+*.tmp
+*.bak
