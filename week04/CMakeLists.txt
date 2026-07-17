@@ -24,21 +24,15 @@ enable_language(C ASM)
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
 
-# Path to STM32Cube repository CMSIS headers
-set(STM32CUBE_REPO_DIR "C:/Users/DELL/STM32Cube/Repository/STM32Cube_FW_F1_V1.8.7")
-
 # Project defines (symbols)
 set(PROJECT_DEFINES 
     STM32F103xB
     USE_HAL_DRIVER
 )
 
-# Project include paths
+# Project include paths (all files are local now)
 set(PROJECT_INCLUDES
     ${CMAKE_SOURCE_DIR}
-    ${STM32CUBE_REPO_DIR}/Drivers/CMSIS/Device/ST/STM32F1xx/Include
-    ${STM32CUBE_REPO_DIR}/Drivers/CMSIS/Include
-    ${STM32CUBE_REPO_DIR}/Drivers/STM32F1xx_HAL_Driver/Inc
 )
 
 # Application source files
@@ -48,9 +42,9 @@ set(PROJECT_SOURCES
     ${CMAKE_SOURCE_DIR}/system_stm32f1xx.c
     ${CMAKE_SOURCE_DIR}/stm32f1xx_hal.c
     ${CMAKE_SOURCE_DIR}/stm32f1xx_hal_gpio.c
-    ${STM32CUBE_REPO_DIR}/Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.c
-    ${STM32CUBE_REPO_DIR}/Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rcc.c
-    ${STM32CUBE_REPO_DIR}/Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rcc_ex.c
+    ${CMAKE_SOURCE_DIR}/stm32f1xx_hal_cortex.c
+    ${CMAKE_SOURCE_DIR}/stm32f1xx_hal_rcc.c
+    ${CMAKE_SOURCE_DIR}/stm32f1xx_hal_rcc_ex.c
 )
 
 # Add sources to target
