@@ -1,0 +1,38 @@
+--- TASK 1: PHÂN TÍCH TRÌNH TỰ VÀ CÔNG DỤNG CỦA TOOLCHAIN ---
+1.1. Công dụng chính của 4 công cụ:
+- CMake: Là công cụ sinh cấu hình (Build System Generator). Nó đọc bản thiết kế 'CMakeLists.txt' để tự động tạo ra các script biên dịch tương thích với môi trường (như Ninja hay Makefile) thay vì phải tự viết tay.
+- Ninja: Là hệ thống biên dịch (Build System) nhỏ gọn và cực kỳ nhanh. Nó đọc các file do CMake tạo ra để quản lý tiến trình build, thực thi biên dịch song song các tệp giúp tiết kiệm thời gian.
+- Compiler (arm-none-eabi-gcc): Là trình biên dịch chéo (Cross-compiler). Làm nhiệm vụ dịch mã nguồn C của con người thành mã đối tượng (.o) và liên kết chúng lại thành mã máy thực thi (executable) tương thích với cấu trúc nhân ARM Cortex-M.
+- STM32_Programmer_CLI: Là công cụ dòng lệnh của ST. Làm nhiệm vụ giao tiếp với mạch nạp ST-Link để ghi (flash), xóa (erase), hoặc xác minh (verify) file mã máy cuối cùng (.bin/.hex) vào bộ nhớ Flash của chip.
+
+1.2. Trình tự logic luồng làm việc:
+Trình tự: Viết Code -> CMake -> Ninja -> arm-none-eabi-gcc -> STM32_Programmer_CLI.
+- (1) CMake chạy trước, tiếp nhận mã nguồn và 'CMakeLists.txt' để tạo ra bản đồ chỉ dẫn biên dịch cho Ninja.
+- (2) Ninja đọc bản đồ này, tính toán và ra lệnh cho Compiler.
+- (3) arm-none-eabi-gcc thực thi lệnh từ Ninja, dịch mã nguồn thành file '.o', liên kết tạo ra file thực thi (.elf) và tiếp tục xuất ra file nhị phân nguyên thủy (.bin).
+- (4) STM32_Programmer_CLI chạy cuối cùng, nhận lấy file '.bin' do trình biên dịch vừa xuất ra, đổ trực tiếp vào bộ nhớ vật lý của vi điều khiển.
+
+--- TASK 2: PHÂN BỔ VAI TRÒ CỦA LINKER VÀ NINJA ---
+2.1. Vai trò của Linker và sự khác biệt giữa .bin và .o:
+- Tại sao không nạp ngay file .o: File .o (Object file) chỉ là mã máy của từng file .c rời rạc. Các địa chỉ hàm và biến bên trong nó mang tính "tương đối", chưa có địa chỉ vật lý thật, cũng chưa kết nối với các file thư viện khác. Do đó chip không thể hiểu và chạy được.
+- Sự khác biệt cốt lõi: Linker có nhiệm vụ gom tất cả các file .o lại, tính toán và gắn "địa chỉ vật lý tuyệt đối cố định" (RAM, FLASH) cho từng hàm/biến dựa vào Linker Script. File '.bin' là sản phẩm cuối cùng của chuỗi này, nó là file nhị phân thuần túy chứa 100% dữ liệu sẽ được ánh xạ vật lý 1-1 vào các ô nhớ Flash trên chip.
+
+2.2. Tính năng Build tăng dần của Ninja:
+- Vai trò: Khi dự án có hàng trăm file, biên dịch lại tất cả mất rất nhiều thời gian. Incremental build giúp Ninja chỉ dịch lại đúng những file bị sửa đổi và các file liên quan, giúp giảm thời gian build từ vài phút xuống còn chưa tới 1 giây.
+- Cơ chế: Ninja so sánh "Time-stamp" (nhãn thời gian lưu lại lúc tệp bị sửa đổi) của file mã nguồn (VD: main.c) và file đối tượng tạo ra từ nó (main.c.obj). Nếu timestamp của 'main.c' MỚI HƠN 'main.c.obj', Ninja sẽ biết file đó vừa bị sửa và tiến hành gọi gcc biên dịch lại duy nhất file đó.
+
+--- TASK 3: BẢN ĐỒ BỘ NHỚ VÀ LINKER SCRIPT ---
+3.1. Phân tích VMA và LMA của vùng .data:
+- LMA (Load Memory Address - AT> FLASH): Là địa chỉ nạp/lưu trữ cố định. Các biến toàn cục có giá trị khởi tạo (VD: int speed = 50;) cần được ghi cố định vào FLASH để khi mất điện không bị mất giá trị gốc.
+- VMA (Virtual/Runtime Memory Address - >RAM): Là địa chỉ lúc chương trình thực thi. Trong lúc chạy, CPU cần thay đổi giá trị biến này liên tục, mà Flash thì không thể thao tác đọc/ghi tốc độ cao như thế được. Phân vùng .data bắt buộc phải dời lên RAM.
+=> Vì vậy cần cả 2: LMA dùng để cất giữ giá trị lúc chip tắt, VMA dùng để thao tác biến lúc chip chạy.
+
+3.2. Rủi ro nếu Reset_Handler quên sao chép .data:
+Nếu hàm khởi tạo (Startup code) quên chép vùng .data từ LMA (Flash) sang VMA (RAM), các ô nhớ của các biến này trên RAM sẽ chứa các giá trị rác ngẫu nhiên (từ quá trình cấp nguồn). Hậu quả: Các biến toàn cục có giá trị khởi tạo (như int speed = 50;) thực tế sẽ mang một con số sai lệch, dẫn tới thuật toán chạy sai hoàn toàn hoặc chip rơi vào trạng thái lỗi (HardFault) ngay lập tức.
+
+--- TASK 4: CÂU LỆNH ĐIỀU KHIỂN HỆ THỐNG ---
+4.1. Câu lệnh CMake cấu hình:
+cmake -B build -G Ninja
+
+4.2. Câu lệnh Ninja biên dịch:
+ninja -C build
